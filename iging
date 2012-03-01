@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Shell script to generate a random Yi Jing hexagram line by line.
 # v0.3
