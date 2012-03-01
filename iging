@@ -1,0 +1,297 @@
+#!/bin/bash
+#
+# Shell script to generate a random Yi Jing hexagram line by line.
+# v0.3
+#
+# Author: m0°ntan
+#
+# Comment: «ZOK — Zopf oder Kahl?»
+#
+# usage: iging [-b] [-f] [-o file] [-w]
+#
+# b - acoustic signal at every occurrence of a moving line
+# f	- fix faces (0 is interpreted as heads, 1 as tails;
+#	by default a coin is flipped to determine this)
+# o	- output data to file
+# s	- add human-readable summary
+# v	- be verbose
+# w	- get randomness from the web rather than your OS
+
+# ----- VARIABLES AND FLAGS -----
+	WEBRNDSRC="https://www.random.org/integers/"
+	WEBRNDPARAM="?num=18&min=0&max=1&col=3&base=2&format=plain&rnd=new"
+	BEL=
+	COINCAST=
+	FIXEDFACE=false
+	WEBGET=false
+	SUMMARY=false
+	COINFILE=
+	VERBOSE=false
+
+# ----- GRAPHICAL REPRESENTATIONS -----
+TRANSITION="> \xe2\x98\xaf >"	# Yin-Yang Symbol
+TRIGRAMBRAC[2]="\xe2\x95\xad"	# Bracket top
+TRIGRAMBRAC[1]="\xe2\x94\xbc"	# Bracket mid
+TRIGRAMBRAC[0]="\xe2\x95\xb0"	# Bracket bottom
+ULMARK[0]="\xe3\x80\x80"		# ideographic space
+ULMARK[1]="\xe4\xb8\x8a"		# zh-Han upper
+ULMARK[2]="\xe4\xb8\x8b"		# zh-Han lower
+for LINE in $(seq 0 5)			# Dice
+do
+	DIEFACE[$LINE]="\xe2\x9a\x$((80+LINE))"
+done
+NUMERO="\x23"					# number sign
+
+# ----- CHECK COMMAND LINE PARAMETERS -----
+set -- `getopt fbhwsvo: "$@"`
+[ $# -lt 1 ] && exit 1	# getopt failed
+while [ $# -gt 0 ]
+do
+    case "$1" in
+	-v) VERBOSE=true;;
+	-b) BEL='\a';;
+	-f)	FIXEDFACE=true;;
+	-s) SUMMARY=true;;
+	-w)	WEBGET=true;;
+	-o) COINFILE="$2"; shift;;
+	--)	shift; break;;
+	-h)
+                echo >&2 \
+		"usage: $0 [-m] [-w] [-o file]"
+		exit 1;;
+	*)	break;;
+    esac
+    shift
+done
+
+if $COINFILE; then echo $COINFILE; fi
+if $SUMFILE; then echo $SUMFILE; fi
+# ----- TOSS COINS -----
+# for each line of the two trigrams (forming the final hexagram)…
+if $WEBGET; then
+	# Curl numbers from random.org
+	if $VERBOSE; then 
+		echo Querying $WEBRNDSRC
+	fi
+	COINCAST=`curl -sSm 8 ${WEBRNDSRC}${WEBRNDPARAM}`$'\n'
+	[ "$COINCAST" = $'\n' ] && exit 2	# exit in case webservice doesn't respond
+
+else
+	# Use system randomness
+	if $VERBOSE; then echo generating numbers…; fi
+	for LINE in $(seq 0 5)
+	do
+		for COIN in $(seq 3)
+		do
+			COINCAST=$COINCAST$((RANDOM%2))$'\t'
+		done
+		COINCAST=${COINCAST:0:$((LINE*6+5))}$'\n'
+	done
+fi
+
+if $VERBOSE; then echo "$COINCAST"; fi
+# ----- FLIP A COIN -----
+# if fixed face interpretation isn't on
+# (uses OS randomness)
+if ! $FIXEDFACE; then
+	HEADS=$((RANDOM%2))
+	TAILS=$(((HEADS-1)**2))
+else
+	HEADS=0
+	TAILS=1
+fi
+FLIPTION=$((HEADS-TAILS))	# (=1|-1)
+
+# ----- GRAPHICAL COIN FACE REPRESENTATIONS -----
+# COINSYM[$HEADS]='\xe3\x8a\xa3'	# Circled 'Correct'
+# COINSYM[$HEADS]='\xe2\x8d\x9f'	# Circle Star
+# COINSYM[$HEADS]='\xe2\xa6\xbf'	# Circled Bullet
+# COINSYM[$HEADS]='\xe2\xa8\x82'	# N-ary circled times operator
+# COINSYM[$HEADS]='\xe2\x97\xaf'	# Large Circle
+# COINSYM[$HEADS]='\xe2\x9d\x82'	# Circled open centre eight pointed star
+# COINSYM[$HEADS]='\xe2\x8a\x9b'	# Circled '*'
+# COINSYM[$HEADS]='\xe2\x92\xbd'	# Circled 'H'
+COINSYM[$HEADS]='\xe2\x93\x97'	# Circled 'h'
+# COINSYM[$TAILS]='\xe2\x9e\x84'	# Circled 5 sans
+# COINSYM[$TAILS]='\xe2\x9e\x89'	# Circled 10 sans
+# COINSYM[$TAILS]='\xe2\x9e\x80'	# Circled 1 sans
+# COINSYM[$TAILS]='\xe2\x93\xb5'	# Double-circled 10
+# COINSYM[$TAILS]='\xe2\x93\xbe'	# Double-circled 1
+# COINSYM[$TAILS]='\xe2\x93\xb9'	# Double-circled 5
+# COINSYM[$TAILS]='\xe2\x9e\x93'	# neg circled 10
+# COINSYM[$TAILS]='\xe2\x9e\x8a'	# neg circled 1
+# COINSYM[$TAILS]='\xe2\x9e\x8e'	# neg circled 5
+COINSYM[$TAILS]='\xe2\x91\xa9'	# Circled 10
+# COINSYM[$TAILS]='\xe2\x91\xa0'	# Circled 1
+# COINSYM[$TAILS]='\xe2\x91\xa4'	# Circled 5
+
+# ----- MONOGRAMS, TRIGRAMS AND HEXAGRAMS -----
+MONOGRAMNAME[$HEADS]=YANG
+MONOGRAM[$HEADS]='\xe2\x9a\x8a'
+MONOGRAMNAME[$HEADS]=YIN
+MONOGRAM[$TAILS]='\xe2\x9a\x8b'
+
+TRIGRAMNAME[1]=Heaven
+TRIGRAMCOMP[1]="111"
+TRIGRAMUPDC[1]=CAT
+TRIGRAMLODC[1]=DOG
+TRIGRAMREP[1]='\xe2\x98\xb0'
+BAGUAHAN[1]='\xe4\xb9\xbe'
+BAGUAHANPY[1]="qián"
+BAGUAZIRAN[1]='\xe5\xa4\xa9'
+BAGUAZIRANPY[1]="tian"
+
+TRIGRAMNAME[2]=Lake
+TRIGRAMCOMP[2]="110"
+TRIGRAMUPDC[2]=CAD
+TRIGRAMLODC[2]=TOG
+TRIGRAMREP[2]='\xe2\x98\xb1'
+BAGUAHAN[2]='\xe5\xb5\x8c'
+BAGUAHANPY[2]="duì"
+BAGUAZIRAN[2]='\xe6\xbe\xa4'
+BAGUAZIRANPY[2]="zé"
+
+TRIGRAMNAME[3]=Fire
+TRIGRAMCOMP[3]="101"
+TRIGRAMUPDC[3]=COT
+TRIGRAMLODC[3]=DAG
+TRIGRAMREP[3]='\xe2\x98\xb2'
+BAGUAHAN[3]='\xe9\x9b\xa2'
+BAGUAHANPY[3]="lí"
+BAGUAZIRAN[3]='\xe7\x81\xab'
+BAGUAZIRANPY[3]="huo"
+
+TRIGRAMNAME[4]=Thunder
+TRIGRAMCOMP[4]="100"
+TRIGRAMUPDC[4]=COD
+TRIGRAMLODC[4]=TAG
+TRIGRAMREP[4]='\xe2\x98\xb3'
+BAGUAHAN[4]='\xe9\x9c\x87'
+BAGUAHANPY[4]="zhèn"
+BAGUAZIRAN[4]='\xe9\x9b\xb7'
+BAGUAZIRANPY[4]="léi"
+
+TRIGRAMNAME[5]=Wind
+TRIGRAMCOMP[5]="011"
+TRIGRAMUPDC[5]=GAT
+TRIGRAMLODC[5]=DOC
+TRIGRAMREP[5]='\xe2\x98\xb4'
+BAGUAHAN[5]='\xe5\xb7\xbd'
+BAGUAHANPY[5]="xùn"
+BAGUAZIRAN[5]='\xe9\xa2\xa8'
+BAGUAZIRANPY[5]="feng"
+
+TRIGRAMNAME[6]=Water
+TRIGRAMCOMP[6]="010"
+TRIGRAMUPDC[6]=GAD
+TRIGRAMLODC[6]=TOC
+TRIGRAMREP[6]='\xe2\x98\xb5'
+BAGUAHAN[6]='\xe5\x9d\x8e'
+BAGUAHANPY[6]="kǎn"
+BAGUAZIRAN[6]='\xe6\xb0\xb4'
+BAGUAZIRANPY[6]="shui"
+
+TRIGRAMNAME[7]=Mountain
+TRIGRAMCOMP[7]="001"
+TRIGRAMUPDC[7]=GOT
+TRIGRAMLODC[7]=DAC
+TRIGRAMREP[7]='\xe2\x98\xb6'
+BAGUAHAN[7]='\xe8\x89\xae'
+BAGUAHANPY[7]="gèn"
+BAGUAZIRAN[7]='\xe5\xb1\xb1'
+BAGUAZIRANPY[7]="shan"
+
+TRIGRAMNAME[8]=Earth
+TRIGRAMCOMP[8]="000"
+TRIGRAMUPDC[8]=GOD
+TRIGRAMLODC[8]=TAC
+TRIGRAMREP[8]='\xe2\x98\xb7'
+BAGUAHAN[8]='\xe5\x9d\xa4'
+BAGUAHANPY[8]="kūn"
+BAGUAZIRAN[8]='\xe5\x9c\xb0'
+BAGUAZIRANPY[8]="dì"
+
+if $VERBOSE; then
+	echo Rule for coin faces: $FLIPTION
+	echo -e \ \> Defining ${COINSYM[$HEADS]} heads as $HEADS
+	echo -e \ \> Defining ${COINSYM[$TAILS]} tails as $TAILS
+fi
+
+# ----- translate the outcome -----
+# according to one of four possible
+# combinations of heads and tails:
+# --------------+---------------+-------------
+#  h=0; t=1 	|	h=1; t=0	| combination
+# --------------+---------------+-------------
+#   old yang 	|	old yin 	|	000=0
+#  young yin 	|	young yang	|	001=1
+# young yang	|	young yin	|	011=2
+#    old yin	|	old yang	|	111=3
+# --------------+---------------+-------------
+
+OLDYANG='-1.5'	# calculate
+OLDYANG=$( echo "scale=1; 1.5*$FLIPTION^2$OLDYANG*$FLIPTION" | bc )
+OLDYANG=${OLDYANG:0:1}
+MONOGRAMLINE[$OLDYANG]='YANG\t(old)\t'${MONOGRAM[$HEADS]}' '$TRANSITION$BEL'\t'${MONOGRAM[$TAILS]}
+
+YOUNGYIN='-0.5'
+YOUNGYIN=$( echo "scale=1; 1.5*$FLIPTION^2$YOUNGYIN*$FLIPTION" | bc )
+YOUNGYIN=${YOUNGYIN:0:1}
+MONOGRAMLINE[$YOUNGYIN]='YIN\t(young)\t'${MONOGRAM[$TAILS]}'\t'${MONOGRAM[$TAILS]}
+
+YOUNGYANG='+0.5'
+YOUNGYANG=$( echo "scale=1; 1.5*$FLIPTION^2$YOUNGYANG*$FLIPTION" | bc )
+YOUNGYANG=${YOUNGYANG:0:1}
+MONOGRAMLINE[$YOUNGYANG]='YANG\t(young)\t'${MONOGRAM[$HEADS]}'\t'${MONOGRAM[$HEADS]}
+
+OLDYIN='+1.5'
+OLDYIN=$( echo "scale=1; 1.5*$FLIPTION^2$OLDYIN*$FLIPTION" | bc )
+OLDYIN=${OLDYIN:0:1}
+MONOGRAMLINE[$OLDYIN]='YIN\t(old)\t'${MONOGRAM[$TAILS]}' '$TRANSITION$BEL'\t'${MONOGRAM[$HEADS]}
+
+for LINE in $(seq 5 0)
+do
+	ROW[$LINE]=${COINCAST:$((LINE*6)):6}
+	TOTAL[$LINE]=$(( ${ROW[LINE]:0:1} + ${ROW[LINE]:2:1} + ${ROW[LINE]:4:1} ))
+	COINSREP[$LINE]="${COINSYM[${ROW[LINE]:0:1}]} ${COINSYM[${ROW[LINE]:2:1}]} ${COINSYM[${ROW[LINE]:4:1}]}"
+	echo -e ${ULMARK[$((((LINE%3)%2)*((LINE+1)%4)))]}${TRIGRAMBRAC[$((LINE%3))]}${DIEFACE[$LINE]} \> ${COINSREP[LINE]} \[${TOTAL[LINE]}\]\ \ ${MONOGRAMLINE[${TOTAL[LINE]}]}
+done
+
+# ----- Split up into trigrams ---
+
+LOTRI[0]="${TOTAL[0]}${TOTAL[1]}${TOTAL[2]}"
+UPTRI[0]="${TOTAL[3]}${TOTAL[4]}${TOTAL[5]}"
+
+# ----- TRANSFORM TRANSITIONAL TRIGRAMS -----
+# reduce to binary old [1] and binary young [2]
+# old trigram
+LOTRI[1]=${LOTRI[0]//2/0}
+LOTRI[1]=${LOTRI[1]//3/1}
+UPTRI[1]=${UPTRI[0]//2/0}
+UPTRI[1]=${UPTRI[1]//3/1}
+# young trigram
+LOTRI[2]=${LOTRI[0]//0/1}
+LOTRI[2]=${LOTRI[2]//3/0}
+LOTRI[2]=${LOTRI[2]//2/0}
+UPTRI[2]=${UPTRI[0]//0/1}
+UPTRI[2]=${UPTRI[2]//3/0}
+UPTRI[2]=${UPTRI[2]//2/0}
+
+# ----- Convert base 4 to base 10 for trigram data retrieval -----
+LODEC[1]=$((2#`echo ${LOTRI[1]}`))
+LODEC[1]=$( echo "scale=1; (-${LODEC[1]}+3.5)*$FLIPTION+4.5" | bc )
+LODEC[1]=${LODEC[1]:0:1}
+UPDEC[1]=$((2#`echo ${UPTRI[1]}`))
+UPDEC[1]=$( echo "scale=1; (-${UPDEC[1]}+3.5)*$FLIPTION+4.5" | bc )
+UPDEC[1]=${UPDEC[1]:0:1}
+LODEC[2]=$((2#`echo ${LOTRI[2]}`))
+LODEC[2]=$( echo "scale=1; (-${LODEC[2]}+3.5)*$FLIPTION+4.5" | bc )
+LODEC[2]=${LODEC[2]:0:1}
+UPDEC[2]=$((2#`echo ${UPTRI[2]}`))
+UPDEC[2]=$( echo "scale=1; (-${UPDEC[2]}+3.5)*$FLIPTION+4.5" | bc )
+UPDEC[2]=${UPDEC[2]:0:1}
+
+[ "${UPTRI[1]}" -ne "${UPTRI[2]}" ] && UPTRANS="$TRANSITION ${UPTRI[2]} ($NUMERO${UPDEC[2]}/8)"
+[ "${LOTRI[1]}" -ne "${LOTRI[2]}" ] && LOTRANS="$TRANSITION ${LOTRI[2]} ($NUMERO${LODEC[2]}/8)"
+echo -e Upper Trigram: ${UPTRI[1]} \($NUMERO${UPDEC[1]}\/8\) $UPTRANS
+echo -e Lower Trigram: ${LOTRI[1]} \($NUMERO${LODEC[1]}\/8\) $LOTRANS
